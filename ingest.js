@@ -1,6 +1,5 @@
 // backend/ingest.js  ← run this once from terminal
-import dotenv from "dotenv";
-dotenv.config();
+import "dotenv/config";
 
 import { ingestDocument } from "./src/services/ingestionService.js";
 import path from "path";

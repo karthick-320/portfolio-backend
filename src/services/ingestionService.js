@@ -1,11 +1,19 @@
 import fs from "fs";
 import { createRequire } from "module";
+import OpenAI from "openai";
+
 const require = createRequire(import.meta.url);
 const pdfParse = require("pdf-parse");
+
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getPineconeIndex } from "../config/pinecone.js";
 
+const ai = new OpenAI({
+  apiKey: process.env.AICREDITS_API_KEY,
+  baseURL: process.env.AICREDITS_BASE_URL,
+});
+
+const EMBEDDING_MODEL = process.env.AICREDITS_EMBEDDING_MODEL;
 
 export const extractText = async (filePath, mimeType) => {
   if (mimeType === "application/pdf") {
@@ -27,10 +35,12 @@ export const chunkText = async (text) => {
 };
 
 const embedText = async (text) => {
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
-  const result = await model.embedContent(text);
-  return Array.from(result.embedding.values); 
+  const result = await ai.embeddings.create({
+    model: EMBEDDING_MODEL,
+    input: text,
+  });
+
+  return result.data[0].embedding;
 };
 
 export const embedAndStore = async (chunks) => {
@@ -51,12 +61,12 @@ export const embedAndStore = async (chunks) => {
         metadata: { text, chunkIndex: i + j },
       });
     }
-      
-      try {
-        await index.upsert(upsertData);
-      } catch (pineconeError) {
-        throw pineconeError;
-      }
+
+    try {
+      await index.upsert(upsertData);
+    } catch (pineconeError) {
+      throw pineconeError;
+    }
 
     totalStored += batch.length;
   }
